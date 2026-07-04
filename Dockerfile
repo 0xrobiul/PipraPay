@@ -1,30 +1,22 @@
 FROM php:8.2-apache
 
-# -----------------------------
-# Application Environment
-# -----------------------------
+# --------------------------------------------------
+# Environment
+# --------------------------------------------------
 ENV APP_ENV=production \
     APP_DEBUG=false \
-    DB_CONNECTION=mysql \
-    DB_HOST=your-mysql-host \
-    DB_PORT=3306 \
-    DB_DATABASE=piprapay \
-    DB_USERNAME=piprapay \
-    DB_PASSWORD=strongpassword \
-    HTTPS=on \
-    HTTP_X_FORWARDED_PROTO=https \
-    SERVER_PORT=443 \
     TZ=UTC
 
-# -----------------------------
-# Install system packages
-# -----------------------------
+# --------------------------------------------------
+# Install system dependencies
+# --------------------------------------------------
 RUN apt-get update && apt-get install -y \
     git \
+    curl \
     unzip \
     zip \
-    curl \
     imagemagick \
+    default-mysql-client \
     libzip-dev \
     libpng-dev \
     libjpeg62-turbo-dev \
@@ -33,59 +25,81 @@ RUN apt-get update && apt-get install -y \
     libicu-dev \
     libxml2-dev \
     libmagickwand-dev \
-    default-mysql-client \
+    libgmp-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# -----------------------------
-# Configure and install PHP extensions
-# -----------------------------
+# --------------------------------------------------
+# Configure GD
+# --------------------------------------------------
 RUN docker-php-ext-configure gd \
     --with-freetype \
     --with-jpeg \
     --with-webp
 
+# --------------------------------------------------
+# Install PHP Extensions
+# --------------------------------------------------
 RUN docker-php-ext-install -j$(nproc) \
-    mysqli \
-    pdo_mysql \
+    bcmath \
+    exif \
     gd \
+    gmp \
     intl \
-    zip \
+    mbstring \
+    mysqli \
     opcache \
-    bcmath
+    pcntl \
+    pdo \
+    pdo_mysql \
+    sockets \
+    zip
 
-RUN pecl install imagick \
-    && docker-php-ext-enable imagick
+# --------------------------------------------------
+# Install PECL Extensions
+# --------------------------------------------------
+RUN pecl install imagick redis \
+    && docker-php-ext-enable imagick redis
 
-# -----------------------------
-# Apache configuration
-# -----------------------------
+# --------------------------------------------------
+# Apache Configuration
+# --------------------------------------------------
 RUN a2enmod rewrite headers remoteip
 
+# Enable .htaccess
 RUN sed -ri \
-    -e 's!/var/www/html!/var/www/html!g' \
     -e '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' \
     /etc/apache2/apache2.conf
 
-# -----------------------------
-# Copy application
-# -----------------------------
+# Remove Apache warning
+RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
+
+# --------------------------------------------------
+# Copy Application
+# --------------------------------------------------
 COPY . /var/www/html/
 
 WORKDIR /var/www/html
 
-# -----------------------------
+# --------------------------------------------------
 # Permissions
-# -----------------------------
+# --------------------------------------------------
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html \
-    && chmod -R 775 /var/www/html/pp-content /var/www/html/pp-media
+    && chmod -R 775 /var/www/html/pp-content \
+    && chmod -R 775 /var/www/html/pp-media
 
-# -----------------------------
-# Expose HTTP port
-# -----------------------------
+# --------------------------------------------------
+# Health Check
+# --------------------------------------------------
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s \
+CMD curl -f http://localhost/ || exit 1
+
+# --------------------------------------------------
+# Expose Port
+# --------------------------------------------------
 EXPOSE 80
 
-# -----------------------------
+# --------------------------------------------------
 # Start Apache
-# -----------------------------
+# --------------------------------------------------
 CMD ["apache2-foreground"]
