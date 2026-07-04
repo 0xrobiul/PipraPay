@@ -22,7 +22,6 @@ ENV APP_ENV=production \
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
-    bcmath \
     zip \
     curl \
     imagemagick \
@@ -51,7 +50,8 @@ RUN docker-php-ext-install -j$(nproc) \
     gd \
     intl \
     zip \
-    opcache
+    opcache \
+    bcmath
 
 RUN pecl install imagick \
     && docker-php-ext-enable imagick
