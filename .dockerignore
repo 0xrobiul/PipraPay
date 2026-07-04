@@ -1,12 +1,10 @@
 .git
 .gitignore
-
 docker-compose.yml
-README.md
-LICENSE
-SECURITY.md
+docker-compose.yaml
+*.md
+PipraPay/.env
+PipraPay/node_modules
+PipraPay/vendor
+PipraPay/storage/logs/*
 
-*.log
-*.sql
-.env
-.env.*
