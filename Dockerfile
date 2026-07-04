@@ -22,6 +22,7 @@ ENV APP_ENV=production \
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
+    bcmath \
     zip \
     curl \
     imagemagick \
