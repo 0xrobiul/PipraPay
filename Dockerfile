@@ -5,10 +5,19 @@ FROM php:8.2-apache
 # --------------------------------------------------
 ENV APP_ENV=production \
     APP_DEBUG=false \
+    DB_CONNECTION=mysql \
+    DB_HOST=YOUR_RENDER_DB_HOST \
+    DB_PORT=3306 \
+    DB_DATABASE=piprapay \
+    DB_USERNAME=piprapay \
+    DB_PASSWORD=strongpassword \
+    HTTPS=on \
+    HTTP_X_FORWARDED_PROTO=https \
+    SERVER_PORT=443 \
     TZ=UTC
 
 # --------------------------------------------------
-# Install system dependencies
+# Install System Dependencies
 # --------------------------------------------------
 RUN apt-get update && apt-get install -y \
     git \
@@ -24,6 +33,7 @@ RUN apt-get update && apt-get install -y \
     libwebp-dev \
     libicu-dev \
     libxml2-dev \
+    libonig-dev \
     libmagickwand-dev \
     libgmp-dev \
     && rm -rf /var/lib/apt/lists/*
@@ -65,12 +75,14 @@ RUN pecl install imagick redis \
 # --------------------------------------------------
 RUN a2enmod rewrite headers remoteip
 
-# Enable .htaccess
+RUN echo 'SetEnvIf X-Forwarded-Proto "https" HTTPS=on' \
+    > /etc/apache2/conf-available/forwarded-proto.conf \
+    && a2enconf forwarded-proto
+
 RUN sed -ri \
     -e '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' \
     /etc/apache2/apache2.conf
 
-# Remove Apache warning
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
 # --------------------------------------------------
@@ -83,16 +95,12 @@ WORKDIR /var/www/html
 # --------------------------------------------------
 # Permissions
 # --------------------------------------------------
-RUN chown -R www-data:www-data /var/www/html \
+RUN mkdir -p /var/www/html/pp-content \
+    && mkdir -p /var/www/html/pp-media \
+    && chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html \
     && chmod -R 775 /var/www/html/pp-content \
     && chmod -R 775 /var/www/html/pp-media
-
-# --------------------------------------------------
-# Health Check
-# --------------------------------------------------
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s \
-CMD curl -f http://localhost/ || exit 1
 
 # --------------------------------------------------
 # Expose Port
